@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from html import escape
 from pathlib import Path
+import json
 
 from .models import StateGraph
 
@@ -162,26 +163,21 @@ def render_html(graph: StateGraph, out_path: Path) -> None:
 
 
 def _screens_js(graph: StateGraph) -> str:
-    parts = []
+    screens = {}
     for screen in graph.screens:
-        components = []
-        for component in screen.components:
-            target = "null" if component.target_screen is None else f'"{escape(component.target_screen)}"'
-            components.append(
-                "{"
-                f'"id":"{escape(component.id)}",'
-                f'"role":"{escape(component.role)}",'
-                f'"label":"{escape(component.label)}",'
-                f'"bbox":[{",".join(str(v) for v in component.bbox)}],'
-                f'"target_screen":{target}'
-                "}"
-            )
-        parts.append(
-            "{"
-            f'"id":"{escape(screen.id)}",'
-            f'"title":"{escape(screen.title)}",'
-            f'"purpose":"{escape(screen.purpose)}",'
-            f'"components":[{",".join(components)}]'
-            "}"
-        )
-    return "{" + ",".join(f'"{escape(screen.id)}":{part}' for screen, part in zip(graph.screens, parts)) + "}"
+        screens[screen.id] = {
+            "id": screen.id,
+            "title": screen.title,
+            "purpose": screen.purpose,
+            "components": [
+                {
+                    "id": component.id,
+                    "role": component.role,
+                    "label": component.label,
+                    "bbox": list(component.bbox),
+                    "target_screen": component.target_screen,
+                }
+                for component in screen.components
+            ],
+        }
+    return json.dumps(screens, ensure_ascii=False)

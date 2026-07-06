@@ -37,7 +37,8 @@ def capture_trajectory(
             )
         context = browser.new_context(**context_options)
         page = context.new_page()
-        page.goto(html_path.resolve().as_uri())
+        page.goto(html_path.resolve().as_uri(), wait_until="domcontentloaded", timeout=10000)
+        page.locator("#app").wait_for(state="visible", timeout=3000)
 
         for step in trajectory.steps:
             if step.operation == "assert_screen":

@@ -24,9 +24,14 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--no-video", action="store_true", help="capture screenshots and DOM without recording videos")
     gen.add_argument(
         "--visual",
-        choices=["none", "mock"],
+        choices=["none", "mock", "external"],
         default="none",
-        help="generate visual refinement assets; mock is a local deterministic adapter",
+        help="generate visual refinement assets",
+    )
+    gen.add_argument(
+        "--visual-command",
+        default=None,
+        help="command template for --visual external; placeholders: {input}, {mask}, {prompt_file}, {output}, {style}",
     )
     gen.add_argument(
         "--export",
@@ -37,7 +42,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "generate":
-        return _generate(args.description, args.out, args.capture, args.visual, args.export, not args.no_video)
+        return _generate(
+            args.description,
+            args.out,
+            args.capture,
+            args.visual,
+            args.export,
+            not args.no_video,
+            args.visual_command,
+        )
     return 1
 
 
@@ -48,6 +61,7 @@ def _generate(
     visual: str,
     export: str,
     record_video: bool,
+    visual_command: str | None,
 ) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     spec = parse_app_description(description)
@@ -77,8 +91,12 @@ def _generate(
                 out_dir / "capture" / trajectory.task_id,
                 record_video=record_video,
             )
-            if visual == "mock":
-                capture_result["visual"] = generate_visual_assets(Path(capture_result["capture_dir"]))
+            if visual != "none":
+                capture_result["visual"] = generate_visual_assets(
+                    Path(capture_result["capture_dir"]),
+                    adapter=visual,
+                    command_template=visual_command,
+                )
             capture_results.append(capture_result)
 
     export_result = None
@@ -96,6 +114,7 @@ def _generate(
             "record_video": record_video if capture_enabled else False,
             "capture_results": capture_results,
             "visual_adapter": visual,
+            "visual_command": visual_command if visual == "external" else None,
             "export_format": export,
             "export_result": export_result,
         },

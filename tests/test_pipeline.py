@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -19,6 +20,20 @@ def test_finance_parser_builds_expected_core_screens() -> None:
     assert spec.domain == "finance"
     assert {screen.id for screen in spec.screens} >= {"home", "add_expense", "category", "stats", "confirmation"}
     assert spec.tasks[0].success_screen == "confirmation"
+
+
+def test_health_and_commerce_domains_have_valid_trajectories() -> None:
+    for description, expected_domain in [
+        ("A fitness health app for logging workout and activity progress.", "health"),
+        ("A shop app with product detail, cart, order, and checkout.", "commerce"),
+    ]:
+        spec = parse_app_description(description)
+        graph = build_state_graph(spec)
+        trajectories = synthesize_trajectories(spec, graph)
+        assert spec.domain == expected_domain
+        assert verify_spec(spec) == []
+        assert verify_graph(graph) == []
+        assert verify_trajectories(graph, trajectories) == []
 
 
 def test_graph_and_trajectory_are_verifiable() -> None:
@@ -124,3 +139,43 @@ def test_cli_generates_visual_assets_and_export(tmp_path: Path) -> None:
     assert rows
     assert (out / "capture" / "add_food_expense" / "layout_masks" / "step_001_mask.png").exists()
     assert (out / "capture" / "add_food_expense" / "visual" / "step_001_mock_diffusion.png").exists()
+
+
+def test_cli_external_visual_adapter(tmp_path: Path) -> None:
+    adapter = tmp_path / "copy_adapter.py"
+    adapter.write_text(
+        "from PIL import Image\n"
+        "import sys\n"
+        "Image.open(sys.argv[1]).save(sys.argv[2])\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "external_dataset"
+
+    try:
+        code = main([
+            "generate",
+            "--description",
+            "A shop app with product detail, cart, and checkout.",
+            "--out",
+            str(out),
+            "--visual",
+            "external",
+            "--visual-command",
+            f"{sys.executable} {adapter} {{input}} {{output}}",
+            "--export",
+            "hf",
+            "--no-video",
+        ])
+    except Exception as exc:
+        message = str(exc).lower()
+        if "executable doesn't exist" in message or "browser" in message:
+            pytest.skip(f"playwright browser unavailable: {exc}")
+        raise
+
+    assert code == 0
+    manifest = read_json(out / "manifest.json")
+    assert manifest["visual_adapter"] == "external"
+    assert manifest["export_result"]["rows"] > 0
+    visual_prompts = read_json(out / "capture" / "buy_featured_product" / "visual_prompts.json")
+    assert visual_prompts["adapter"] == "external"
+    assert (out / "capture" / "buy_featured_product" / "visual" / "step_001_external_diffusion.png").exists()

@@ -25,6 +25,10 @@ def parse_app_description(description: str) -> AppSpec:
         return _finance_spec(app_name, cleaned)
     if domain == "todo":
         return _todo_spec(app_name, cleaned)
+    if domain == "health":
+        return _health_spec(app_name, cleaned)
+    if domain == "commerce":
+        return _commerce_spec(app_name, cleaned)
     return _generic_spec(app_name, domain, cleaned)
 
 
@@ -159,6 +163,103 @@ def _todo_spec(app_name: str, description: str) -> AppSpec:
         Task("add_task", "Create a task called Submit report.", "home", "confirmation", "Task saved"),
     ]
     return AppSpec(app_name, "todo", description, ["task", "project"], screens, tasks)
+
+
+def _health_spec(app_name: str, description: str) -> AppSpec:
+    screens = [
+        Screen(
+            id="home",
+            title="Health",
+            purpose="Show health summary and entry points.",
+            components=[
+                Component("title", "heading", app_name, (24, 28, 360, 68)),
+                Component("activity_card", "card", "Today: 6,420 steps", (24, 104, 360, 176)),
+                Component("log_workout", "button", "Log workout", (204, 620, 360, 672), target_screen="workout"),
+            ],
+        ),
+        Screen(
+            id="workout",
+            title="Workout",
+            purpose="Record a workout session.",
+            components=[
+                Component("workout_type", "button", "Choose workout", (24, 124, 360, 176), target_screen="workout_type"),
+                Component("duration_input", "textbox", "Duration minutes", (24, 196, 360, 248)),
+                Component("save_workout", "button", "Save workout", (204, 620, 360, 672), target_screen="confirmation"),
+                Component("cancel", "button", "Cancel", (24, 620, 188, 672), target_screen="home"),
+            ],
+        ),
+        Screen(
+            id="workout_type",
+            title="Workout Type",
+            purpose="Choose workout type.",
+            components=[
+                Component("run_type", "listitem", "Run", (24, 118, 360, 166), target_screen="workout"),
+                Component("cycle_type", "listitem", "Cycle", (24, 178, 360, 226), target_screen="workout"),
+                Component("strength_type", "listitem", "Strength", (24, 238, 360, 286), target_screen="workout"),
+            ],
+        ),
+        Screen(
+            id="confirmation",
+            title="Saved",
+            purpose="Confirm workout logging.",
+            components=[
+                Component("saved_status", "status", "Workout saved", (24, 132, 360, 188)),
+                Component("done", "button", "Done", (204, 620, 360, 672), target_screen="home"),
+            ],
+        ),
+    ]
+    tasks = [
+        Task("log_run_workout", "Log a 30 minute run workout.", "home", "confirmation", "Workout saved"),
+    ]
+    return AppSpec(app_name, "health", description, ["workout", "duration", "activity"], screens, tasks)
+
+
+def _commerce_spec(app_name: str, description: str) -> AppSpec:
+    screens = [
+        Screen(
+            id="home",
+            title="Shop",
+            purpose="Show featured products.",
+            components=[
+                Component("title", "heading", app_name, (24, 28, 360, 68)),
+                Component("featured_product", "card", "Everyday Backpack - $79", (24, 104, 360, 188)),
+                Component("open_product", "button", "View product", (204, 620, 360, 672), target_screen="product"),
+            ],
+        ),
+        Screen(
+            id="product",
+            title="Product",
+            purpose="Show product details.",
+            components=[
+                Component("product_card", "card", "Everyday Backpack\nDurable 20L carry", (24, 112, 360, 246)),
+                Component("add_to_cart", "button", "Add to cart", (204, 620, 360, 672), target_screen="cart"),
+                Component("back_home", "button", "Back", (24, 620, 188, 672), target_screen="home"),
+            ],
+        ),
+        Screen(
+            id="cart",
+            title="Cart",
+            purpose="Review selected items.",
+            components=[
+                Component("cart_item", "card", "Everyday Backpack\nSubtotal $79", (24, 116, 360, 210)),
+                Component("checkout", "button", "Checkout", (204, 620, 360, 672), target_screen="confirmation"),
+                Component("keep_shopping", "button", "Keep shopping", (24, 620, 188, 672), target_screen="home"),
+            ],
+        ),
+        Screen(
+            id="confirmation",
+            title="Ordered",
+            purpose="Confirm checkout.",
+            components=[
+                Component("saved_status", "status", "Order placed", (24, 132, 360, 188)),
+                Component("done", "button", "Done", (204, 620, 360, 672), target_screen="home"),
+            ],
+        ),
+    ]
+    tasks = [
+        Task("buy_featured_product", "Buy the featured backpack from the shop.", "home", "confirmation", "Order placed"),
+    ]
+    return AppSpec(app_name, "commerce", description, ["product", "cart", "order"], screens, tasks)
 
 
 def _generic_spec(app_name: str, domain: str, description: str) -> AppSpec:

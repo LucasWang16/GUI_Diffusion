@@ -10,6 +10,7 @@ TASK_VALUES = {
     "merchant_input": "Coffee",
     "task_input": "Submit report",
     "name_input": "Demo",
+    "duration_input": "30",
 }
 
 
@@ -54,6 +55,13 @@ def _task_path(graph: StateGraph, task_id: str, start: str, target: str) -> list
             Edge("home", "add_expense", "add_expense", "click"),
             Edge("add_expense", "category", "category_picker", "click"),
         ]
+    if task_id == "log_run_workout":
+        return [
+            Edge("home", "workout", "log_workout", "click"),
+            Edge("workout", "workout_type", "workout_type", "click"),
+            Edge("workout_type", "workout", "run_type", "click"),
+            Edge("workout", "confirmation", "save_workout", "click"),
+        ]
     return _shortest_path(graph.edges, start, target)
 
 
@@ -85,6 +93,8 @@ def _inject_required_form_steps(graph: StateGraph, path: list[Edge]) -> list[Edg
             enriched.append(Edge("add_task", "add_task", "task_input", "fill"))
         if edge.source == "create" and edge.component_id == "save_item":
             enriched.append(Edge("create", "create", "name_input", "fill"))
+        if edge.source == "workout" and edge.component_id == "save_workout":
+            enriched.append(Edge("workout", "workout", "duration_input", "fill"))
         enriched.append(edge)
 
         if edge.component_id == "category_picker":

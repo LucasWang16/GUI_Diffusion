@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gui-diffusion"
-version = "0.2.0"
-description = "GUI-agent training data generator with deterministic visual-adapter and export pipeline."
+version = "0.3.0"
+description = "GUI-agent training data generator with external visual adapter hooks and multi-domain templates."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

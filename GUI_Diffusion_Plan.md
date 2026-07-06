@@ -106,10 +106,11 @@ Restart Codex to pick up newly installed skills in future turns.
 
 3. Version 0.3
    - More app domains and screen templates.
-   - Randomized but valid layout/theme variation.
    - External diffusion adapter hook for SDXL/FLUX/ControlNet.
+   - Command-template adapter with screenshot, mask, prompt file, and output placeholders.
 
 4. Version 0.4
+   - Randomized but valid layout/theme variation.
    - LLM-based app spec parser.
    - VLM/OCR quality critic.
    - Automatic task expansion and negative examples.
