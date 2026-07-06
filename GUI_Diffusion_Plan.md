@@ -110,12 +110,18 @@ Restart Codex to pick up newly installed skills in future turns.
    - Command-template adapter with screenshot, mask, prompt file, and output placeholders.
 
 4. Version 0.4
+   - Slurm visual adapter for B200/H200 execution.
+   - Slurm array jobs over captured GUI steps.
+   - Dry-run mode for job script validation.
+   - Wait mode for synchronous small demos.
+
+5. Version 0.5
    - Randomized but valid layout/theme variation.
    - LLM-based app spec parser.
    - VLM/OCR quality critic.
    - Automatic task expansion and negative examples.
 
-5. Version 0.5
+6. Version 0.6
    - Real diffusion/ControlNet visual refinement.
    - LoRA training dataset builder from generated screen IR and screenshots.
    - Verifier that compares refined screenshot OCR and target bounding boxes against the original IR.

@@ -8,6 +8,7 @@ from .exporter import export_hf_dataset
 from .graph import build_state_graph
 from .models import write_json
 from .renderer import render_html
+from .slurm import generate_slurm_visual_assets
 from .spec_parser import parse_app_description
 from .trajectory import synthesize_trajectories
 from .verifier import verify_graph, verify_spec, verify_trajectories
@@ -24,7 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--no-video", action="store_true", help="capture screenshots and DOM without recording videos")
     gen.add_argument(
         "--visual",
-        choices=["none", "mock", "external"],
+        choices=["none", "mock", "external", "slurm"],
         default="none",
         help="generate visual refinement assets",
     )
@@ -33,6 +34,15 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="command template for --visual external; placeholders: {input}, {mask}, {prompt_file}, {output}, {style}",
     )
+    gen.add_argument("--slurm-partition", default="scavenge_gpu")
+    gen.add_argument("--slurm-gpu", choices=["b200", "h200"], default="b200")
+    gen.add_argument("--slurm-gpus", type=int, default=1)
+    gen.add_argument("--slurm-time", default="00:10:00")
+    gen.add_argument("--slurm-cpus", type=int, default=4)
+    gen.add_argument("--slurm-mem", default="16G")
+    gen.add_argument("--slurm-wait", action="store_true", help="wait for Slurm visual jobs to finish")
+    gen.add_argument("--slurm-dry-run", action="store_true", help="write Slurm scripts without submitting jobs")
+    gen.add_argument("--slurm-timeout", type=int, default=3600)
     gen.add_argument(
         "--export",
         choices=["none", "hf"],
@@ -50,6 +60,17 @@ def main(argv: list[str] | None = None) -> int:
             args.export,
             not args.no_video,
             args.visual_command,
+            {
+                "partition": args.slurm_partition,
+                "gpu_type": args.slurm_gpu,
+                "gpus": args.slurm_gpus,
+                "time_limit": args.slurm_time,
+                "cpus": args.slurm_cpus,
+                "mem": args.slurm_mem,
+                "wait": args.slurm_wait,
+                "dry_run": args.slurm_dry_run,
+                "timeout_seconds": args.slurm_timeout,
+            },
         )
     return 1
 
@@ -62,6 +83,7 @@ def _generate(
     export: str,
     record_video: bool,
     visual_command: str | None,
+    slurm_options: dict[str, object],
 ) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     spec = parse_app_description(description)
@@ -91,7 +113,24 @@ def _generate(
                 out_dir / "capture" / trajectory.task_id,
                 record_video=record_video,
             )
-            if visual != "none":
+            if visual == "slurm":
+                if not visual_command:
+                    print("ERROR: --visual-command is required when --visual slurm is used")
+                    return 2
+                capture_result["visual"] = generate_slurm_visual_assets(
+                    Path(capture_result["capture_dir"]),
+                    command_template=visual_command,
+                    partition=str(slurm_options["partition"]),
+                    gpu_type=str(slurm_options["gpu_type"]),
+                    gpus=int(slurm_options["gpus"]),
+                    time_limit=str(slurm_options["time_limit"]),
+                    cpus=int(slurm_options["cpus"]),
+                    mem=str(slurm_options["mem"]),
+                    wait=bool(slurm_options["wait"]),
+                    dry_run=bool(slurm_options["dry_run"]),
+                    timeout_seconds=int(slurm_options["timeout_seconds"]),
+                )
+            elif visual != "none":
                 capture_result["visual"] = generate_visual_assets(
                     Path(capture_result["capture_dir"]),
                     adapter=visual,
@@ -114,7 +153,8 @@ def _generate(
             "record_video": record_video if capture_enabled else False,
             "capture_results": capture_results,
             "visual_adapter": visual,
-            "visual_command": visual_command if visual == "external" else None,
+            "visual_command": visual_command if visual in {"external", "slurm"} else None,
+            "slurm_options": slurm_options if visual == "slurm" else None,
             "export_format": export,
             "export_result": export_result,
         },

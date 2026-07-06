@@ -19,6 +19,48 @@ ROLE_COLORS = {
 }
 
 
+def prepare_visual_items(
+    capture_dir: Path,
+    style: str = "clean_product_ui",
+) -> list[dict[str, Any]]:
+    capture = read_json(capture_dir / "capture.json")
+    masks_dir = capture_dir / "layout_masks"
+    visual_dir = capture_dir / "visual"
+    prompt_dir = capture_dir / "visual_prompt_text"
+    masks_dir.mkdir(exist_ok=True)
+    visual_dir.mkdir(exist_ok=True)
+    prompt_dir.mkdir(exist_ok=True)
+
+    items = []
+    for item in capture["steps"]:
+        screenshot = capture_dir / item["screenshot"]
+        step_no = item["step"]["step"]
+        mask_name = f"step_{step_no:03d}_mask.png"
+        prompt_name = f"step_{step_no:03d}_prompt.txt"
+
+        mask_path = masks_dir / mask_name
+        prompt = _prompt_for_step(item, style)
+        prompt_path = prompt_dir / prompt_name
+
+        _write_layout_mask(item["dom"], mask_path)
+        prompt_path.write_text(prompt + "\n", encoding="utf-8")
+        items.append(
+            {
+                "step": step_no,
+                "style": style,
+                "input_screenshot": item["screenshot"],
+                "input_screenshot_path": str(screenshot),
+                "layout_mask": f"layout_masks/{mask_name}",
+                "layout_mask_path": str(mask_path),
+                "prompt_file": f"visual_prompt_text/{prompt_name}",
+                "prompt_file_path": str(prompt_path),
+                "prompt": prompt,
+                "preserve": ["text", "component bounding boxes", "click targets"],
+            }
+        )
+    return items
+
+
 def generate_visual_assets(
     capture_dir: Path,
     style: str = "clean_product_ui",
@@ -35,52 +77,32 @@ def generate_visual_assets(
     if adapter == "external" and not command_template:
         raise ValueError("--visual-command is required when --visual external is used")
 
-    capture = read_json(capture_dir / "capture.json")
-    masks_dir = capture_dir / "layout_masks"
     visual_dir = capture_dir / "visual"
-    prompt_dir = capture_dir / "visual_prompt_text"
-    masks_dir.mkdir(exist_ok=True)
     visual_dir.mkdir(exist_ok=True)
-    prompt_dir.mkdir(exist_ok=True)
-
     prompts = []
-    for item in capture["steps"]:
-        screenshot = capture_dir / item["screenshot"]
-        step_no = item["step"]["step"]
-        mask_name = f"step_{step_no:03d}_mask.png"
+    for item in prepare_visual_items(capture_dir, style):
+        step_no = item["step"]
         visual_name = f"step_{step_no:03d}_{adapter}_diffusion.png"
-        prompt_name = f"step_{step_no:03d}_prompt.txt"
-
-        mask_path = masks_dir / mask_name
         visual_path = visual_dir / visual_name
-        prompt = _prompt_for_step(item, style)
-        prompt_path = prompt_dir / prompt_name
-
-        _write_layout_mask(item["dom"], mask_path)
-        prompt_path.write_text(prompt + "\n", encoding="utf-8")
         if adapter == "mock":
-            _write_mock_refinement(screenshot, visual_path)
+            _write_mock_refinement(Path(item["input_screenshot_path"]), visual_path)
         else:
             _run_external_adapter(
                 command_template=command_template or "",
-                screenshot=screenshot,
-                mask=mask_path,
-                prompt_file=prompt_path,
+                screenshot=Path(item["input_screenshot_path"]),
+                mask=Path(item["layout_mask_path"]),
+                prompt_file=Path(item["prompt_file_path"]),
                 output=visual_path,
                 style=style,
             )
+        prompt_record = {
+            key: value
+            for key, value in item.items()
+            if key not in {"input_screenshot_path", "layout_mask_path", "prompt_file_path"}
+        }
+        prompt_record.update({"adapter": adapter, "output_image": f"visual/{visual_name}"})
         prompts.append(
-            {
-                "step": step_no,
-                "adapter": adapter,
-                "style": style,
-                "input_screenshot": item["screenshot"],
-                "layout_mask": f"layout_masks/{mask_name}",
-                "prompt_file": f"visual_prompt_text/{prompt_name}",
-                "output_image": f"visual/{visual_name}",
-                "prompt": prompt,
-                "preserve": ["text", "component bounding boxes", "click targets"],
-            }
+            prompt_record
         )
 
     write_json(capture_dir / "visual_prompts.json", {"adapter": adapter, "style": style, "items": prompts})

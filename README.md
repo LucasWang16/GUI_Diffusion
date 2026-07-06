@@ -64,3 +64,26 @@ gui-diffusion generate \
   --export hf \
   --no-video
 ```
+
+## Slurm B200/H200 Visual Adapter
+
+Use `--visual slurm` to run the visual adapter as a Slurm array job. This is the intended path for real diffusion generation on B200/H200 nodes.
+
+```bash
+gui-diffusion generate \
+  --description "A shop app with product detail, cart, and checkout" \
+  --out examples/out/shop_slurm_b200 \
+  --visual slurm \
+  --visual-command "python run_diffusion.py --input {input} --mask {mask} --prompt-file {prompt_file} --output {output}" \
+  --slurm-partition scavenge_gpu \
+  --slurm-gpu b200 \
+  --slurm-gpus 1 \
+  --slurm-time 00:10:00 \
+  --slurm-wait \
+  --export hf \
+  --no-video
+```
+
+For H200, switch to `--slurm-gpu h200` and a partition that exposes H200, such as `gpu_h200` when available.
+
+Use `--slurm-dry-run` to write the Slurm job script and item manifest without submitting.

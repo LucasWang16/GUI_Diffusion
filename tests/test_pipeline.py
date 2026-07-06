@@ -179,3 +179,44 @@ def test_cli_external_visual_adapter(tmp_path: Path) -> None:
     visual_prompts = read_json(out / "capture" / "buy_featured_product" / "visual_prompts.json")
     assert visual_prompts["adapter"] == "external"
     assert (out / "capture" / "buy_featured_product" / "visual" / "step_001_external_diffusion.png").exists()
+
+
+def test_cli_slurm_visual_adapter_dry_run(tmp_path: Path) -> None:
+    out = tmp_path / "slurm_dataset"
+    try:
+        code = main([
+            "generate",
+            "--description",
+            "A shop app with product detail, cart, and checkout.",
+            "--out",
+            str(out),
+            "--visual",
+            "slurm",
+            "--visual-command",
+            f"{sys.executable} examples/adapters/copy_adapter.py {{input}} {{output}}",
+            "--slurm-partition",
+            "gpu_devel",
+            "--slurm-gpu",
+            "b200",
+            "--slurm-dry-run",
+            "--export",
+            "hf",
+            "--no-video",
+        ])
+    except Exception as exc:
+        message = str(exc).lower()
+        if "executable doesn't exist" in message or "browser" in message:
+            pytest.skip(f"playwright browser unavailable: {exc}")
+        raise
+
+    assert code == 0
+    manifest = read_json(out / "manifest.json")
+    assert manifest["visual_adapter"] == "slurm"
+    visual = manifest["capture_results"][0]["visual"]
+    assert visual["dry_run"] is True
+    assert visual["job_id"] is None
+    job_script = Path(visual["job_script"])
+    assert job_script.exists()
+    assert "--gres=gpu:b200:1" in job_script.read_text(encoding="utf-8")
+    prompts = read_json(out / "capture" / "buy_featured_product" / "visual_prompts.json")
+    assert prompts["adapter"] == "slurm"
