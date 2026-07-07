@@ -27,6 +27,7 @@ def generate_slurm_visual_assets(
     poll_seconds: float = 10.0,
     timeout_seconds: int = 3600,
     dry_run: bool = False,
+    single_task: bool = False,
 ) -> dict[str, Any]:
     items = prepare_visual_items(capture_dir, style)
     visual_dir = capture_dir / "visual"
@@ -80,7 +81,8 @@ def generate_slurm_visual_assets(
         time_limit=time_limit,
         cpus=cpus,
         mem=mem,
-        array_max=max(len(worker_items) - 1, 0),
+        array_max=0 if single_task else max(len(worker_items) - 1, 0),
+        single_task=single_task,
     )
 
     write_json(capture_dir / "visual_prompts.json", {"adapter": "slurm", "style": style, "items": prompt_records})
@@ -97,6 +99,7 @@ def generate_slurm_visual_assets(
         "dry_run": dry_run,
         "job_id": None,
         "completed": False,
+        "single_task": single_task,
     }
     if dry_run:
         return result
@@ -126,9 +129,13 @@ def _write_job_script(
     cpus: int,
     mem: str,
     array_max: int,
+    single_task: bool,
 ) -> None:
     cwd = Path.cwd()
     python = sys.executable
+    task_line = f"{python} -m gui_diffusion.slurm_worker --items {items_path}"
+    if single_task:
+        task_line = _single_task_command(items_path)
     script = f"""#!/bin/bash
 #SBATCH --job-name=gui-diffusion-visual
 #SBATCH --partition={partition}
@@ -143,9 +150,17 @@ set -euo pipefail
 cd {cwd}
 echo "node=$(hostname)"
 echo "cuda_visible_devices=${{CUDA_VISIBLE_DEVICES:-unset}}"
-{python} -m gui_diffusion.slurm_worker --items {items_path}
+{task_line}
 """
     job_path.write_text(script, encoding="utf-8")
+
+
+def _single_task_command(items_path: Path) -> str:
+    data = json.loads(items_path.read_text(encoding="utf-8"))
+    command_template = data["command_template"]
+    if "{items}" not in command_template:
+        raise ValueError("--slurm-single-task requires --visual-command to contain {items}")
+    return command_template.format(items=str(items_path))
 
 
 def _parse_job_id(output: str) -> str:

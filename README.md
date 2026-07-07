@@ -87,3 +87,25 @@ gui-diffusion generate \
 For H200, switch to `--slurm-gpu h200` and a partition that exposes H200, such as `gpu_h200` when available.
 
 Use `--slurm-dry-run` to write the Slurm job script and item manifest without submitting.
+
+## Batched SDXL On Slurm
+
+For full-trajectory SDXL generation, prefer one Slurm task that loads SDXL once and processes every captured GUI step:
+
+```bash
+gui-diffusion generate \
+  --description "A shop app with product detail, cart, order, and checkout." \
+  --out examples/out/shop_sdxl_b200 \
+  --visual slurm \
+  --visual-command "GUI_Diffusion/.venv/bin/python GUI_Diffusion/examples/adapters/sdxl_batch_adapter.py --items {items} --height 512 --width 512 --steps 6 --guidance 3.0 --strength 0.25 --mode img2img" \
+  --slurm-single-task \
+  --slurm-partition scavenge_gpu \
+  --slurm-gpu b200 \
+  --slurm-gpus 1 \
+  --slurm-time 00:45:00 \
+  --slurm-wait \
+  --export hf \
+  --no-video
+```
+
+The batch adapter writes one `step_*_slurm_diffusion.png` image per trajectory step.

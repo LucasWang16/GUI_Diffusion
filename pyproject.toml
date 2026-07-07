@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gui-diffusion"
-version = "0.4.0"
-description = "GUI-agent training data generator with Slurm B200/H200 visual execution support."
+version = "0.5.0"
+description = "GUI-agent training data generator with batched SDXL Slurm generation."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

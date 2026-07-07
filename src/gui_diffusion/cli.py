@@ -44,6 +44,11 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--slurm-dry-run", action="store_true", help="write Slurm scripts without submitting jobs")
     gen.add_argument("--slurm-timeout", type=int, default=3600)
     gen.add_argument(
+        "--slurm-single-task",
+        action="store_true",
+        help="run one Slurm task over all visual items; command template must contain {items}",
+    )
+    gen.add_argument(
         "--export",
         choices=["none", "hf"],
         default="none",
@@ -70,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
                 "wait": args.slurm_wait,
                 "dry_run": args.slurm_dry_run,
                 "timeout_seconds": args.slurm_timeout,
+                "single_task": args.slurm_single_task,
             },
         )
     return 1
@@ -129,6 +135,7 @@ def _generate(
                     wait=bool(slurm_options["wait"]),
                     dry_run=bool(slurm_options["dry_run"]),
                     timeout_seconds=int(slurm_options["timeout_seconds"]),
+                    single_task=bool(slurm_options["single_task"]),
                 )
             elif visual != "none":
                 capture_result["visual"] = generate_visual_assets(

@@ -220,3 +220,41 @@ def test_cli_slurm_visual_adapter_dry_run(tmp_path: Path) -> None:
     assert "--gres=gpu:b200:1" in job_script.read_text(encoding="utf-8")
     prompts = read_json(out / "capture" / "buy_featured_product" / "visual_prompts.json")
     assert prompts["adapter"] == "slurm"
+
+
+def test_cli_slurm_single_task_dry_run(tmp_path: Path) -> None:
+    out = tmp_path / "slurm_single_dataset"
+    try:
+        code = main([
+            "generate",
+            "--description",
+            "A shop app with product detail, cart, and checkout.",
+            "--out",
+            str(out),
+            "--visual",
+            "slurm",
+            "--visual-command",
+            f"{sys.executable} examples/adapters/sdxl_batch_adapter.py --items {{items}} --steps 1",
+            "--slurm-partition",
+            "gpu_devel",
+            "--slurm-gpu",
+            "b200",
+            "--slurm-single-task",
+            "--slurm-dry-run",
+            "--export",
+            "hf",
+            "--no-video",
+        ])
+    except Exception as exc:
+        message = str(exc).lower()
+        if "executable doesn't exist" in message or "browser" in message:
+            pytest.skip(f"playwright browser unavailable: {exc}")
+        raise
+
+    assert code == 0
+    manifest = read_json(out / "manifest.json")
+    visual = manifest["capture_results"][0]["visual"]
+    assert visual["single_task"] is True
+    job_script = Path(visual["job_script"]).read_text(encoding="utf-8")
+    assert "sdxl_batch_adapter.py --items" in job_script
+    assert "#SBATCH --array=0-0" in job_script

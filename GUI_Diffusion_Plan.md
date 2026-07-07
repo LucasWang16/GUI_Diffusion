@@ -116,12 +116,17 @@ Restart Codex to pick up newly installed skills in future turns.
    - Wait mode for synchronous small demos.
 
 5. Version 0.5
+   - Batched SDXL img2img adapter for full trajectories.
+   - Single Slurm task mode to load SDXL once per trajectory.
+   - B200 smoke/demo path for SDXL outputs.
+
+6. Version 0.6
    - Randomized but valid layout/theme variation.
    - LLM-based app spec parser.
    - VLM/OCR quality critic.
    - Automatic task expansion and negative examples.
 
-6. Version 0.6
+7. Version 0.7
    - Real diffusion/ControlNet visual refinement.
    - LoRA training dataset builder from generated screen IR and screenshots.
    - Verifier that compares refined screenshot OCR and target bounding boxes against the original IR.
